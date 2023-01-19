@@ -11,7 +11,6 @@ from torch import nn
 from .transcribe import transcribe as transcribe_function
 from .decoding import detect_language as detect_language_function, decode as decode_function
 
-import gc, time
 
 @dataclass
 class ModelDimensions:
@@ -277,66 +276,20 @@ class Whisper(nn.Module):
     def __init__(self, dims: ModelDimensions):
         super().__init__()
         self.dims = dims
-
-        self.loaded_model = None
-        self.loaded_model_obj = None
-        self.target_device = None
-        self._encoder = AudioEncoder(            self.dims.n_mels,
+        self.encoder = AudioEncoder(
+            self.dims.n_mels,
             self.dims.n_audio_ctx,
             self.dims.n_audio_state,
             self.dims.n_audio_head,
             self.dims.n_audio_layer,
         )
-        self._decoder = TextDecoder(
+        self.decoder = TextDecoder(
             self.dims.n_vocab,
             self.dims.n_text_ctx,
             self.dims.n_text_state,
             self.dims.n_text_head,
             self.dims.n_text_layer,
         )
-
-
-    @property
-    def encoder(self):
-        if self.loaded_model is None or self.loaded_model != "encoder":
-            # print("Load encoder to " + self.target_device)
-            # start = time.process_time()
-
-            if self.loaded_model == 'decoder':
-                self.loaded_model_obj.to('cpu')
-                del self.loaded_model_obj
-                torch.cuda.empty_cache()
-                gc.collect()
-            self.loaded_model_obj = self._encoder.to(self.target_device)
-            self.loaded_model = "encoder"
-
-            # print(time.process_time() - start)
-        return self.loaded_model_obj
-
-    @property
-    def decoder(self):
-        if self.loaded_model is None or self.loaded_model != "decoder":
-            # print("Load decoder to " + self.target_device)
-            # start = time.process_time()
-
-            if self.loaded_model == 'encoder':
-                self.loaded_model_obj.to('cpu')
-                del self.loaded_model_obj
-                torch.cuda.empty_cache()
-                gc.collect()
-            self.loaded_model_obj = self._decoder.to(self.target_device)
-            self.loaded_model = "decoder"
-
-            # print(time.process_time() - start)
-        return self.loaded_model_obj
-
-    def load_state_dict(self, state_dict):
-        for k in list(state_dict.keys()):
-            newKey = k.replace('encoder.', '_encoder.').replace('decoder.', '_decoder.')
-            state_dict[newKey] = state_dict[k]
-            del state_dict[k]
-        return super().load_state_dict(state_dict)
-
 
     def embed_audio(self, mel: torch.Tensor):
         return self.encoder(mel)
@@ -355,6 +308,7 @@ class Whisper(nn.Module):
         )
         return outputs
 
+<<<<<<< HEAD
     def forward(self, mel: torch.Tensor, tokens: torch.Tensor):
         dummy_cache = torch.zeros([
             tokens.size(0), self.dims.n_text_layer, 0, self.dims.n_text_state
@@ -373,9 +327,11 @@ class Whisper(nn.Module):
         self.target_device = device
         return self
 
+=======
+>>>>>>> parent of 3babc5f (test commits from ProjectEGU/whisper-for-low-vram)
     @property
     def device(self):
-        return self.target_device
+        return next(self.parameters()).device
 
     @property
     def is_multilingual(self):
